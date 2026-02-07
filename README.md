@@ -2,6 +2,8 @@
 
 A client-only transformer attention explorer that visualizes attention maps, next-token probabilities, and residual energy.
 
+Live site: https://tommyvio.github.io/attention-explorer/
+
 ## Highlights
 
 - Deterministic attention heatmaps per layer/head
