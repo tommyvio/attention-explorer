@@ -1,6 +1,6 @@
 # Attention Explorer
 
-A client-only transformer attention explorer that visualizes attention maps, next-token probabilities, and residual energy — built to feel like a .
+A client-only transformer attention explorer that visualizes attention maps, next-token probabilities, and residual energy.
 
 ## Highlights
 
@@ -10,6 +10,7 @@ A client-only transformer attention explorer that visualizes attention maps, nex
 - Next-token probability view
 - Residual energy bars
 - Shareable prompt + seed URL
+- Optional real model (distilgpt2) for next-token probabilities
 
 ## Run
 

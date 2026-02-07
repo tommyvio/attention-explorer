@@ -4,6 +4,7 @@ const runButton = document.getElementById("run");
 const shareButton = document.getElementById("share");
 const promptInput = document.getElementById("prompt");
 const modeSelect = document.getElementById("mode");
+const modelSourceSelect = document.getElementById("modelSource");
 const layerSelect = document.getElementById("layer");
 const headSelect = document.getElementById("head");
 const temperatureInput = document.getElementById("temperature");
@@ -73,6 +74,13 @@ const state = {
   vocab: [...coreVocab],
 };
 
+const realModel = {
+  loading: false,
+  ready: false,
+  tokenizer: null,
+  model: null,
+};
+
 function mulberry32(seed) {
   return function () {
     let t = (seed += 0x6d2b79f5);
@@ -108,6 +116,32 @@ function showToast(message) {
   toast.textContent = message;
   toast.classList.remove("hidden");
   setTimeout(() => toast.classList.add("hidden"), 1600);
+}
+
+async function loadRealModel() {
+  if (realModel.ready || realModel.loading) return;
+  realModel.loading = true;
+  showToast("Loading distilgpt2 (first run may take a bit)");
+  try {
+    const transformers = await import(
+      "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.0"
+    );
+    const { AutoTokenizer, AutoModelForCausalLM, env } = transformers;
+    if (env) env.allowRemoteModels = true;
+    realModel.tokenizer = await AutoTokenizer.from_pretrained("Xenova/distilgpt2");
+    realModel.model = await AutoModelForCausalLM.from_pretrained(
+      "Xenova/distilgpt2",
+      { dtype: "q4" }
+    );
+    realModel.ready = true;
+    showToast("Real model ready");
+  } catch (error) {
+    console.error(error);
+    showToast("Failed to load model");
+    modelSourceSelect.value = "synthetic";
+  } finally {
+    realModel.loading = false;
+  }
 }
 
 function tokenize(text) {
@@ -291,6 +325,51 @@ function nextTokenProbs(vector) {
   return ranked;
 }
 
+async function nextTokenProbsReal(prompt) {
+  if (!realModel.ready) {
+    await loadRealModel();
+  }
+  if (!realModel.ready) return null;
+  const inputs = await realModel.tokenizer(prompt);
+  const output = await realModel.model(inputs);
+  const logits = output.logits;
+  const dims = logits.dims;
+  const vocab = dims[dims.length - 1];
+  const seq = dims[dims.length - 2];
+  const offset = (seq - 1) * vocab;
+  const data = logits.data;
+  const temp = Number(temperatureInput.value) || 1;
+
+  let max = -Infinity;
+  for (let i = 0; i < vocab; i += 1) {
+    const value = data[offset + i];
+    if (value > max) max = value;
+  }
+
+  let sum = 0;
+  for (let i = 0; i < vocab; i += 1) {
+    sum += Math.exp((data[offset + i] - max) / temp);
+  }
+
+  const top = [];
+  for (let i = 0; i < vocab; i += 1) {
+    const prob = Math.exp((data[offset + i] - max) / temp) / sum;
+    if (top.length < 8) {
+      top.push({ id: i, prob });
+      top.sort((a, b) => b.prob - a.prob);
+    } else if (prob > top[top.length - 1].prob) {
+      top[top.length - 1] = { id: i, prob };
+      top.sort((a, b) => b.prob - a.prob);
+    }
+  }
+
+  return top.map((entry) => {
+    let token = realModel.tokenizer.decode([entry.id]);
+    if (!token.trim()) token = "<space>";
+    return { token, prob: entry.prob };
+  });
+}
+
 function renderTokens(tokens) {
   tokenRow.innerHTML = "";
   tokens.forEach((token, i) => {
@@ -348,8 +427,12 @@ function drawAttention() {
 }
 
 function renderNextToken(vector) {
+  renderNextTokenList(nextTokenProbs(vector));
+}
+
+function renderNextTokenList(list) {
   nextTokens.innerHTML = "";
-  nextTokenProbs(vector).forEach(({ token, prob }) => {
+  list.forEach(({ token, prob }) => {
     const li = document.createElement("li");
     li.innerHTML = `<span>${token}</span><strong>${(prob * 100).toFixed(1)}%</strong>`;
     nextTokens.appendChild(li);
@@ -370,7 +453,7 @@ function renderEnergy(energies) {
   });
 }
 
-function run() {
+async function run() {
   const tokens = tokenize(promptInput.value);
   if (!tokens.length) {
     showToast("Enter a prompt first");
@@ -385,7 +468,16 @@ function run() {
 
   renderTokens(tokens);
   drawAttention();
-  renderNextToken(X[X.length - 1]);
+  if (modelSourceSelect.value === "real") {
+    const list = await nextTokenProbsReal(promptInput.value);
+    if (list) {
+      renderNextTokenList(list);
+    } else {
+      renderNextToken(X[X.length - 1]);
+    }
+  } else {
+    renderNextToken(X[X.length - 1]);
+  }
   renderEnergy(energies);
 }
 
@@ -410,6 +502,7 @@ function copyLink() {
   const url = new URL(window.location.href);
   url.searchParams.set("seed", state.seed);
   url.searchParams.set("prompt", promptInput.value.trim());
+  url.searchParams.set("model", modelSourceSelect.value);
   navigator.clipboard.writeText(url.toString()).then(() => {
     showToast("Share link copied");
   });
@@ -419,7 +512,9 @@ function loadFromURL() {
   const params = new URLSearchParams(window.location.search);
   const seed = params.get("seed") || Math.random().toString(36).slice(2, 10);
   const prompt = params.get("prompt");
+  const model = params.get("model");
   if (prompt) promptInput.value = prompt;
+  if (model === "real") modelSourceSelect.value = "real";
   setSeed(seed);
 }
 
@@ -434,7 +529,19 @@ shareButton.addEventListener("click", copyLink);
 layerSelect.addEventListener("change", drawAttention);
 headSelect.addEventListener("change", drawAttention);
 modeSelect.addEventListener("change", run);
-temperatureInput.addEventListener("input", drawAttention);
+modelSourceSelect.addEventListener("change", async () => {
+  if (modelSourceSelect.value === "real") {
+    await loadRealModel();
+  }
+  run();
+});
+temperatureInput.addEventListener("input", () => {
+  if (modelSourceSelect.value === "real") {
+    run();
+  } else {
+    drawAttention();
+  }
+});
 
 energyToggle.addEventListener("click", () => {
   energyPanel.classList.toggle("hidden");
@@ -445,4 +552,8 @@ energyToggle.addEventListener("click", () => {
 
 initSelectors();
 loadFromURL();
-run();
+if (modelSourceSelect.value === "real") {
+  loadRealModel().then(run);
+} else {
+  run();
+}

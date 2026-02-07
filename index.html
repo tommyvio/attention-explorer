@@ -50,6 +50,13 @@ The model maps tokens to vectors, then uses attention to decide what matters.
             </select>
           </div>
           <div class="panel-row">
+            <label for="modelSource">Model</label>
+            <select id="modelSource">
+              <option value="synthetic">Synthetic (fast)</option>
+              <option value="real">Real model (distilgpt2)</option>
+            </select>
+          </div>
+          <div class="panel-row">
             <label for="layer">Layer</label>
             <select id="layer"></select>
           </div>
@@ -111,6 +118,13 @@ The model maps tokens to vectors, then uses attention to decide what matters.
             <p>
               Archetype mode highlights common attention behaviors (previous
               token, punctuation, repetition) so patterns are easy to spot.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Real model mode</h3>
+            <p>
+              When enabled, a small GPT-2 model powers next-token probabilities.
+              The attention map stays synthetic so patterns remain readable.
             </p>
           </div>
           <div class="card">
