@@ -18,6 +18,7 @@ const nextTokens = document.getElementById("nextTokens");
 const energyPanel = document.getElementById("energyPanel");
 const energyBars = document.getElementById("energyBars");
 const toast = document.getElementById("toast");
+const heatTooltip = document.getElementById("heatTooltip");
 
 const ctx = attentionCanvas.getContext("2d");
 
@@ -74,6 +75,12 @@ const state = {
   attentions: [],
   energies: [],
   vocab: [...coreVocab],
+  heatmap: {
+    size: 0,
+    cell: 0,
+    tokens: [],
+    attention: [],
+  },
 };
 
 const examples = [
@@ -81,21 +88,25 @@ const examples = [
     label: "Menu indecision",
     prompt:
       "I know what to eat today, but I keep changing my mind because the menu is huge.",
+    note: "contrast + hesitation",
   },
   {
     label: "Space probe status",
     prompt:
       "The probe entered orbit, but the telemetry still shows unexpected heat spikes.",
+    note: "cause + contrast",
   },
   {
     label: "Design critique",
     prompt:
       "The interface feels calm, yet the call-to-action still isn't obvious to me.",
+    note: "sentiment + contrast",
   },
   {
     label: "Attention summary",
     prompt:
       "Attention lets each token decide which other tokens matter most for its update.",
+    note: "definition",
   },
 ];
 
@@ -420,6 +431,11 @@ function drawAttention() {
   const size = tokens.length;
   const cell = attentionCanvas.width / Math.max(size, 1);
 
+  state.heatmap.size = size;
+  state.heatmap.cell = cell;
+  state.heatmap.tokens = tokens;
+  state.heatmap.attention = attention;
+
   ctx.clearRect(0, 0, attentionCanvas.width, attentionCanvas.height);
   ctx.fillStyle = "#06070d";
   ctx.fillRect(0, 0, attentionCanvas.width, attentionCanvas.height);
@@ -533,7 +549,7 @@ function initSelectors() {
   examples.forEach((example, index) => {
     const option = document.createElement("option");
     option.value = index;
-    option.textContent = example.label;
+    option.textContent = `${example.label} — ${example.note}`;
     examplesSelect.appendChild(option);
   });
 }
@@ -575,7 +591,36 @@ loadExampleButton.addEventListener("click", () => {
   if (!example) return;
   promptInput.value = example.prompt;
   run();
-  showToast("Example loaded");
+  showToast(`Example loaded: ${example.label}`);
+});
+
+attentionCanvas.addEventListener("mousemove", (event) => {
+  if (!heatTooltip || !state.heatmap.size) return;
+  const rect = attentionCanvas.getBoundingClientRect();
+  const x = event.clientX - rect.left;
+  const y = event.clientY - rect.top;
+  const col = Math.floor((x / rect.width) * state.heatmap.size);
+  const row = Math.floor((y / rect.height) * state.heatmap.size);
+  if (
+    row < 0 ||
+    col < 0 ||
+    row >= state.heatmap.size ||
+    col >= state.heatmap.size
+  ) {
+    heatTooltip.classList.add("hidden");
+    return;
+  }
+  const fromToken = state.heatmap.tokens[row];
+  const toToken = state.heatmap.tokens[col];
+  const value = state.heatmap.attention[row][col];
+  heatTooltip.textContent = `${fromToken} → ${toToken}: ${(value * 100).toFixed(1)}%`;
+  heatTooltip.style.left = `${x}px`;
+  heatTooltip.style.top = `${y}px`;
+  heatTooltip.classList.remove("hidden");
+});
+
+attentionCanvas.addEventListener("mouseleave", () => {
+  if (heatTooltip) heatTooltip.classList.add("hidden");
 });
 
 layerSelect.addEventListener("change", drawAttention);
