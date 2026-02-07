@@ -429,16 +429,22 @@ function drawAttention() {
   const attention = state.attentions[layerIndex][headIndex];
   const tokens = state.tokens;
   const size = tokens.length;
-  const cell = attentionCanvas.width / Math.max(size, 1);
+  const cssWidth = attentionCanvas.clientWidth || attentionCanvas.width;
+  const cssHeight = attentionCanvas.clientHeight || attentionCanvas.height;
+  const dpr = window.devicePixelRatio || 1;
+  attentionCanvas.width = Math.floor(cssWidth * dpr);
+  attentionCanvas.height = Math.floor(cssHeight * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const cell = cssWidth / Math.max(size, 1);
 
   state.heatmap.size = size;
   state.heatmap.cell = cell;
   state.heatmap.tokens = tokens;
   state.heatmap.attention = attention;
 
-  ctx.clearRect(0, 0, attentionCanvas.width, attentionCanvas.height);
+  ctx.clearRect(0, 0, cssWidth, cssHeight);
   ctx.fillStyle = "#06070d";
-  ctx.fillRect(0, 0, attentionCanvas.width, attentionCanvas.height);
+  ctx.fillRect(0, 0, cssWidth, cssHeight);
 
   for (let i = 0; i < size; i += 1) {
     for (let j = 0; j < size; j += 1) {
@@ -619,7 +625,38 @@ attentionCanvas.addEventListener("mousemove", (event) => {
   heatTooltip.classList.remove("hidden");
 });
 
+attentionCanvas.addEventListener("touchmove", (event) => {
+  if (!heatTooltip || !state.heatmap.size) return;
+  const touch = event.touches[0];
+  if (!touch) return;
+  const rect = attentionCanvas.getBoundingClientRect();
+  const x = touch.clientX - rect.left;
+  const y = touch.clientY - rect.top;
+  const col = Math.floor((x / rect.width) * state.heatmap.size);
+  const row = Math.floor((y / rect.height) * state.heatmap.size);
+  if (
+    row < 0 ||
+    col < 0 ||
+    row >= state.heatmap.size ||
+    col >= state.heatmap.size
+  ) {
+    heatTooltip.classList.add("hidden");
+    return;
+  }
+  const fromToken = state.heatmap.tokens[row];
+  const toToken = state.heatmap.tokens[col];
+  const value = state.heatmap.attention[row][col];
+  heatTooltip.textContent = `${fromToken} → ${toToken}: ${(value * 100).toFixed(1)}%`;
+  heatTooltip.style.left = `${x}px`;
+  heatTooltip.style.top = `${y}px`;
+  heatTooltip.classList.remove("hidden");
+});
+
 attentionCanvas.addEventListener("mouseleave", () => {
+  if (heatTooltip) heatTooltip.classList.add("hidden");
+});
+
+attentionCanvas.addEventListener("touchend", () => {
   if (heatTooltip) heatTooltip.classList.add("hidden");
 });
 
