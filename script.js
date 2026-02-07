@@ -3,6 +3,8 @@ const remixButton = document.getElementById("remix");
 const runButton = document.getElementById("run");
 const shareButton = document.getElementById("share");
 const promptInput = document.getElementById("prompt");
+const examplesSelect = document.getElementById("examples");
+const loadExampleButton = document.getElementById("loadExample");
 const modeSelect = document.getElementById("mode");
 const modelSourceSelect = document.getElementById("modelSource");
 const layerSelect = document.getElementById("layer");
@@ -73,6 +75,29 @@ const state = {
   energies: [],
   vocab: [...coreVocab],
 };
+
+const examples = [
+  {
+    label: "Menu indecision",
+    prompt:
+      "I know what to eat today, but I keep changing my mind because the menu is huge.",
+  },
+  {
+    label: "Space probe status",
+    prompt:
+      "The probe entered orbit, but the telemetry still shows unexpected heat spikes.",
+  },
+  {
+    label: "Design critique",
+    prompt:
+      "The interface feels calm, yet the call-to-action still isn't obvious to me.",
+  },
+  {
+    label: "Attention summary",
+    prompt:
+      "Attention lets each token decide which other tokens matter most for its update.",
+  },
+];
 
 const realModel = {
   loading: false,
@@ -484,6 +509,7 @@ async function run() {
 function initSelectors() {
   layerSelect.innerHTML = "";
   headSelect.innerHTML = "";
+  examplesSelect.innerHTML = "";
   for (let i = 0; i < config.layers; i += 1) {
     const option = document.createElement("option");
     option.value = i;
@@ -496,6 +522,20 @@ function initSelectors() {
     option.textContent = `Head ${i + 1} (${archetypes[i % archetypes.length]})`;
     headSelect.appendChild(option);
   }
+
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Select an example";
+  placeholder.disabled = true;
+  placeholder.selected = true;
+  examplesSelect.appendChild(placeholder);
+
+  examples.forEach((example, index) => {
+    const option = document.createElement("option");
+    option.value = index;
+    option.textContent = example.label;
+    examplesSelect.appendChild(option);
+  });
 }
 
 function copyLink() {
@@ -525,6 +565,18 @@ remixButton.addEventListener("click", () => {
 
 runButton.addEventListener("click", run);
 shareButton.addEventListener("click", copyLink);
+loadExampleButton.addEventListener("click", () => {
+  const index = Number(examplesSelect.value);
+  if (Number.isNaN(index)) {
+    showToast("Pick an example first");
+    return;
+  }
+  const example = examples[index];
+  if (!example) return;
+  promptInput.value = example.prompt;
+  run();
+  showToast("Example loaded");
+});
 
 layerSelect.addEventListener("change", drawAttention);
 headSelect.addEventListener("change", drawAttention);

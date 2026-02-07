@@ -113,6 +113,13 @@ textarea {
   flex-wrap: wrap;
 }
 
+.example-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+}
+
 button,
 select {
   font: inherit;
@@ -362,6 +369,11 @@ canvas {
   .panel-row {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .example-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
   }
 
   .meta {
