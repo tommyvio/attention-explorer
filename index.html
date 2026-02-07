@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Attention Explorer</title>
+    <meta
+      name="description"
+      content="A client-side transformer attention explorer with heatmaps, token probabilities, and guided insights."
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="ambient"></div>
+    <header class="hero">
+      <div class="top">
+        <div class="brand">
+          <span class="chip">Transformer Lab</span>
+          <h1>Attention Explorer</h1>
+        </div>
+        <div class="meta">
+          <div class="seed">Seed <strong id="seedValue">—</strong></div>
+          <button id="remix" class="ghost">Remix</button>
+        </div>
+      </div>
+      <p class="lede">
+        A client-only transformer sandbox that visualizes attention, token
+        probabilities, and residual energy. It’s built to teach and impress at
+        the same time.
+      </p>
+
+      <div class="controls">
+        <div class="input">
+          <label for="prompt">Prompt</label>
+          <textarea id="prompt" rows="3">
+The model maps tokens to vectors, then uses attention to decide what matters.
+          </textarea>
+          <div class="input-actions">
+            <button id="run" class="primary">Run</button>
+            <button id="share" class="ghost">Copy Link</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-row">
+            <label for="mode">Mode</label>
+            <select id="mode">
+              <option value="archetype">Archetype Attention</option>
+              <option value="stochastic">Stochastic Weights</option>
+            </select>
+          </div>
+          <div class="panel-row">
+            <label for="layer">Layer</label>
+            <select id="layer"></select>
+          </div>
+          <div class="panel-row">
+            <label for="head">Head</label>
+            <select id="head"></select>
+          </div>
+          <div class="panel-row">
+            <label for="temperature">Temperature</label>
+            <input id="temperature" type="range" min="0.2" max="1.6" step="0.1" value="0.8" />
+          </div>
+          <div class="panel-row">
+            <label for="energyToggle">Energy View</label>
+            <button id="energyToggle" class="ghost">Show</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="grid">
+      <section class="tokens">
+        <div class="section-title">Tokens</div>
+        <div id="tokenRow" class="token-row"></div>
+        <div class="token-hint">Click a token to highlight its attention row.</div>
+      </section>
+
+      <section class="heatmap">
+        <div class="section-title">Attention Map</div>
+        <canvas id="attention" width="720" height="480"></canvas>
+        <div class="legend">
+          <span>Low</span>
+          <div class="bar"></div>
+          <span>High</span>
+        </div>
+        <div id="mapLabel" class="map-label">Layer 1 · Head 1</div>
+      </section>
+
+      <section class="stats">
+        <div class="section-title">Next Token</div>
+        <ul id="nextTokens" class="prob-list"></ul>
+        <div id="energyPanel" class="energy hidden">
+          <div class="section-title">Residual Energy</div>
+          <div id="energyBars" class="energy-bars"></div>
+        </div>
+      </section>
+
+      <section class="insights">
+        <div class="section-title">Insights</div>
+        <div class="cards">
+          <div class="card">
+            <h3>What am I seeing?</h3>
+            <p>
+              Each square is attention weight: how much token A looks at token B
+              when building its next representation.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Why archetypes?</h3>
+            <p>
+              Archetype mode highlights common attention behaviors (previous
+              token, punctuation, repetition) so patterns are easy to spot.
+            </p>
+          </div>
+          <div class="card">
+            <h3>What is residual energy?</h3>
+            <p>
+              It’s the L2 norm of the residual stream after each layer — a quick
+              proxy for how much signal is accumulating.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div>Client-only transformer demo • No server required</div>
+      <div>Built for learning and portfolio impact</div>
+    </footer>
+
+    <div id="toast" class="toast hidden"></div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
